@@ -47,6 +47,31 @@ run "defaults" {
   }
 }
 
+run "single_replica_and_load_balancer_settings" {
+  command = plan
+
+  variables {
+    mvc_app_allowed_cidrs       = ["203.0.113.10/32"]
+    mvc_app_service_annotations = { "example.com/annotation" = "true" }
+  }
+
+  assert {
+    # Both apps keep per-pod state (in-memory records, antiforgery keys).
+    condition     = alltrue([for d in kubernetes_deployment_v1.app : d.spec[0].replicas == "1"])
+    error_message = "Both apps must run a single replica."
+  }
+
+  assert {
+    condition     = kubernetes_service_v1.app["mvc-app"].spec[0].load_balancer_source_ranges == toset(["203.0.113.10/32"])
+    error_message = "The MVC load balancer must only allow mvc_app_allowed_cidrs."
+  }
+
+  assert {
+    condition     = kubernetes_service_v1.app["mvc-app"].metadata[0].annotations["example.com/annotation"] == "true" && length(kubernetes_service_v1.app["rest-api"].metadata[0].annotations) == 0
+    error_message = "Service annotations must only apply to the MVC app."
+  }
+}
+
 run "rejects_invalid_service_type" {
   command = plan
 

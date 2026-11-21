@@ -4,8 +4,8 @@ variable "image_tag" {
   default     = "latest"
 }
 
-variable "replicas" {
-  description = "Replicas per app"
-  type        = number
-  default     = 2
+variable "mvc_app_allowed_cidrs" {
+  description = "Client CIDRs allowed through the MVC app's load balancer; defaults to the eks workspace's api_allowed_cidrs"
+  type        = list(string)
+  default     = null
 }

@@ -34,5 +34,15 @@ module "demo_apps" {
   source = "../modules/demo-apps"
 
   image_tag = var.image_tag
-  replicas  = var.replicas
+
+  # The demo apps have no authentication or TLS, so only allow the same
+  # clients as the EKS API endpoint by default.
+  mvc_app_allowed_cidrs = var.mvc_app_allowed_cidrs != null ? var.mvc_app_allowed_cidrs : data.terraform_remote_state.eks.outputs.api_allowed_cidrs
+
+  mvc_app_service_annotations = {
+    # The Classic Load Balancer spans all three public subnets, but nodes may
+    # run in only two zones; route across zones so no zone is left without
+    # a backend.
+    "service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled" = "true"
+  }
 }

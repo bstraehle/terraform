@@ -22,7 +22,7 @@ This repo provisions an Amazon EKS cluster and deploys the demo [MVC app](https:
 | --- | --- |
 | [`eks/`](eks) | VPC ([terraform-aws-modules/vpc](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws) 6.7.3) and EKS cluster ([terraform-aws-modules/eks](https://registry.terraform.io/modules/terraform-aws-modules/eks/aws) 21.29.0): Kubernetes 1.37, one managed node group (AL2023, `t3.medium`, 2 nodes), core add-ons, and an [access entry](https://docs.aws.amazon.com/eks/latest/userguide/access-entries.html) that makes you cluster admin |
 | [`kubernetes/`](kubernetes) | Reads the cluster from the `eks` state and deploys the apps with the module below |
-| [`modules/demo-apps/`](modules/demo-apps) | Namespace `demo` (enforces the restricted Pod Security Standard), plus a ServiceAccount, Deployment, Service, and PodDisruptionBudget per app. Pods run as non-root with a read-only filesystem, probes, and resource limits. Same design as [bstraehle/kubernetes](https://github.com/bstraehle/kubernetes). |
+| [`modules/demo-apps/`](modules/demo-apps) | Namespace `demo` (enforces the restricted Pod Security Standard), plus a ServiceAccount, Deployment (one replica, because both apps keep per-pod state), and Service per app. Pods run as non-root with a read-only filesystem, probes, and resource limits. Same design as [bstraehle/kubernetes](https://github.com/bstraehle/kubernetes). |
 
 Two separate workspaces keep the cluster's lifecycle apart from the workloads, so you can redeploy apps without touching the cluster.
 
@@ -66,7 +66,7 @@ terraform plan
 terraform apply
 ```
 
-Provisioning takes about 15 minutes. Optional variables: `region` (default `us-west-2`), `cluster_name` (`terraform-eks`), `kubernetes_version` (`1.37`), `node_instance_types`, `node_count`.
+Provisioning takes about 15 minutes. Optional variables: `region` (default `us-west-2`), `cluster_name` (`terraform-eks`), `kubernetes_version` (`1.37`), `node_instance_types`, `node_count`. `node_count.desired` only applies when the node group is created; to resize an existing group, change `min`/`max` or use the AWS console or CLI.
 
 Configure kubectl and check the nodes:
 
@@ -88,6 +88,8 @@ terraform output mvc_app_url
 ```
 
 Open the `mvc_app_url` (the load balancer takes a few minutes to resolve) and choose **Demo** to list data from the API. To deploy another image tag: `terraform apply -var image_tag=<tag>`.
+
+The demo apps have no authentication and serve plain HTTP, so the load balancer only accepts clients from `api_allowed_cidrs` in the `eks` workspace. Override this with `-var 'mvc_app_allowed_cidrs=["<cidr>"]'`. Cross-zone load balancing is enabled, so every zone of the load balancer can reach the nodes.
 
 ## 5. Clean Up
 

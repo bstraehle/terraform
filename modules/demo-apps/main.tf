@@ -4,17 +4,19 @@ locals {
 
   apps = {
     rest-api = {
-      service_name = "rest-api-service"
-      service_port = 8001
-      service_type = "ClusterIP"
-      probe_path   = "/Demo"
-      env          = {}
+      service_name  = "rest-api-service"
+      service_port  = 8001
+      service_type  = "ClusterIP"
+      allowed_cidrs = []
+      probe_path    = "/Demo"
+      env           = {}
     }
     mvc-app = {
-      service_name = "mvc-app-service"
-      service_port = 8000
-      service_type = var.mvc_app_service_type
-      probe_path   = "/"
+      service_name  = "mvc-app-service"
+      service_port  = 8000
+      service_type  = var.mvc_app_service_type
+      allowed_cidrs = var.mvc_app_allowed_cidrs
+      probe_path    = "/"
       env = {
         DEMO_API_HOST = "http://rest-api-service:8001"
       }
@@ -60,7 +62,10 @@ resource "kubernetes_deployment_v1" "app" {
   }
 
   spec {
-    replicas = var.replicas
+    # One replica: the API keeps its records in memory per process, and the
+    # MVC app encrypts antiforgery tokens with a per-pod key, so additional
+    # replicas would serve different data and reject each other's forms.
+    replicas = 1
 
     selector {
       match_labels = {
@@ -164,13 +169,15 @@ resource "kubernetes_service_v1" "app" {
   for_each = local.apps
 
   metadata {
-    name      = each.value.service_name
-    namespace = kubernetes_namespace_v1.demo.metadata[0].name
-    labels    = merge(local.labels, { "app.kubernetes.io/name" = each.key })
+    name        = each.value.service_name
+    namespace   = kubernetes_namespace_v1.demo.metadata[0].name
+    labels      = merge(local.labels, { "app.kubernetes.io/name" = each.key })
+    annotations = each.key == "mvc-app" ? var.mvc_app_service_annotations : {}
   }
 
   spec {
-    type = each.value.service_type
+    type                        = each.value.service_type
+    load_balancer_source_ranges = each.value.service_type == "LoadBalancer" ? each.value.allowed_cidrs : null
 
     selector = {
       "app.kubernetes.io/name" = each.key
@@ -185,23 +192,4 @@ resource "kubernetes_service_v1" "app" {
 
   # Don't block apply on clusters without a load balancer controller.
   wait_for_load_balancer = each.value.service_type == "LoadBalancer"
-}
-
-resource "kubernetes_pod_disruption_budget_v1" "app" {
-  for_each = local.apps
-
-  metadata {
-    name      = each.key
-    namespace = kubernetes_namespace_v1.demo.metadata[0].name
-    labels    = merge(local.labels, { "app.kubernetes.io/name" = each.key })
-  }
-
-  spec {
-    min_available = 1
-    selector {
-      match_labels = {
-        "app.kubernetes.io/name" = each.key
-      }
-    }
-  }
 }

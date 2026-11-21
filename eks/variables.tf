@@ -23,7 +23,10 @@ variable "node_instance_types" {
 }
 
 variable "node_count" {
-  description = "Desired, minimum, and maximum number of nodes"
+  # The EKS module applies "desired" only when the node group is created and
+  # ignores later changes, so scale an existing group by changing min/max or
+  # with the AWS CLI or console.
+  description = "Desired (at creation only), minimum, and maximum number of nodes"
   type = object({
     desired = number
     min     = number

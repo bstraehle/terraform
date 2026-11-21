@@ -18,6 +18,11 @@ output "cluster_security_group_id" {
   value       = module.eks.cluster_security_group_id
 }
 
+output "api_allowed_cidrs" {
+  description = "CIDRs allowed to reach the EKS API; the kubernetes workspace reuses them for the MVC app's load balancer"
+  value       = var.api_allowed_cidrs
+}
+
 output "configure_kubectl" {
   description = "Command to add the cluster to your kubeconfig"
   value       = "aws eks update-kubeconfig --region ${var.region} --name ${module.eks.cluster_name}"
