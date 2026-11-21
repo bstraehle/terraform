@@ -27,3 +27,10 @@ override.tf.json
 
 # Include tfplan files to ignore the plan output of command: terraform plan -out=tfplan
 # example: *tfplan*
+
+# Lock files are only committed for the root workspaces (eks, kubernetes).
+modules/**/.terraform.lock.hcl
+.github/e2e/**/.terraform.lock.hcl
+
+# Local variable values (e.g. api_allowed_cidrs with your IP).
+terraform.tfvars
