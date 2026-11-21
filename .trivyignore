@@ -1,0 +1,13 @@
+# Accepted findings for this demo; each needs a reason.
+
+# EKS public API endpoint: required to run kubectl and the kubernetes
+# workspace from a workstation or CloudShell. Access is limited to
+# var.api_allowed_cidrs (no default). AWS-0041 flags any public CIDR, even a
+# single /32, so it is accepted for the same reason.
+AWS-0040
+AWS-0041
+
+# Node security group egress to 0.0.0.0/0 (terraform-aws-modules/eks
+# "egress_all" rule): nodes pull images from Docker Hub and reach AWS APIs
+# through the NAT gateway.
+AWS-0104
